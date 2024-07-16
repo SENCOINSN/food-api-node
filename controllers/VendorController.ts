@@ -8,6 +8,8 @@ import {
   EditVendorInput,
   VendorLoginInput,
 } from '../dto';
+import { CreateFoodInput } from '../dto/Food.dto';
+import { Food } from '../models';
 import {
   GenerateSignature,
   GetUserAuthenticated,
@@ -108,3 +110,63 @@ export const UpdateVendorService = async (req: Request,res: Response, next: Next
     return res.json({'message': 'Unable to Update vendor profile '})
 
 }
+
+export const AddFood = async (req: Request, res: Response, next: NextFunction) => {
+
+    const user = await GetUserAuthenticated(req);
+
+    const { name, description, category, foodType, readyTime, price } = <CreateFoodInput>req.body;
+     
+    if(user){
+
+       const vendor = await FindVendor('',user.email);
+
+       if(vendor !== null){
+
+            const files = req.files as [Express.Multer.File];
+
+            const images = files.map((file: Express.Multer.File) => file.filename);
+            
+            const food = await Food.create({
+                vendorId: vendor._id,
+                name: name,
+                description: description,
+                category: category,
+                price: price,
+                rating: 0,
+                readyTime: readyTime,
+                foodType: foodType,
+                images: images
+            })
+            
+            vendor.foods.push(food);
+            const result = await vendor.save();
+            return res.json(result);
+       }
+
+    }
+    return res.json({'message': 'Unable to Update vendor profile '})
+}
+
+export const GetFoods = async (req: Request, res: Response, next: NextFunction) => {
+    const user = await GetUserAuthenticated(req)
+ 
+    if(user){
+       const vendor = await FindVendor('',user.email);
+       if(vendor){
+        const foods = await Food.find({ vendorId: vendor._id});
+
+        if(foods !== null){
+             return res.json(foods);
+        }
+ 
+     }
+     return res.json({'message': 'Vendor not found'})
+ }
+ return res.json({'message': 'Foods not found!'})
+
+}
+
+      
+
+
