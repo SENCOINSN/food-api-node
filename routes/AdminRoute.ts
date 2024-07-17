@@ -1,8 +1,4 @@
-import express, {
-  NextFunction,
-  Request,
-  Response,
-} from 'express';
+import express from 'express';
 
 import {
   CreateVandor,
@@ -14,12 +10,5 @@ const router = express.Router();
 router.post('/vandor',CreateVandor)
 router.get("/vandors",GetVanndors)
 router.get('/vandor/:id',GetVandorByID)
-
-router.get('/', (req: Request, res: Response, next: NextFunction) => {
-
-
-    res.json({ message: "Hello from  Admin"})
-
-})
 
 export { router as AdminRoute };

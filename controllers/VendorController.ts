@@ -43,12 +43,6 @@ export const VendorLogin = async (req: Request,res: Response, next: NextFunction
 
 export const GetVendorProfile = async (req: Request,res: Response, next: NextFunction) => {
 
-    //const user = req.user;
-    //const signature = req.get('Authorization')
-
-   // const payload = await jwt.verify(signature!.split(' ')[1], APP_SECRET) as AuthPayload; 
-    //let user: AuthPayload = payload;
-
     const user =await GetUserAuthenticated(req);
     if(user){
        const existingVendor = await FindVendor('',user.email);
@@ -76,6 +70,32 @@ export const UpdateVendorProfile = async (req: Request,res: Response, next: Next
             existingVendor.foodType = foodType;
             const saveResult = await existingVendor.save();
 
+            return res.json(saveResult);
+       }
+
+    }
+    return res.json({'message': 'Unable to Update vendor profile '})
+
+}
+
+export const UpdateVendorCoverImage = async (req: Request,res: Response, next: NextFunction) => {
+
+    const user = await GetUserAuthenticated(req);
+
+     if(user){
+
+       const vendor = await FindVendor('',user.email);
+
+       if(vendor !== null){
+
+            const files = req.files as [Express.Multer.File];
+
+            const images = files.map((file: Express.Multer.File) => file.filename);
+
+            vendor.coverImages.push(...images);
+
+            const saveResult = await vendor.save();
+            
             return res.json(saveResult);
        }
 
