@@ -31,7 +31,7 @@ export class EditCustomerProfileInput {
     @Length(3,16)
     lastName: string;
     
-    @Length(6,16)
+    @Length(6,50)
     address: string;
 }
  
