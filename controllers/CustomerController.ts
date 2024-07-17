@@ -200,22 +200,7 @@ export const RequestOTPByEmail = async (req: Request, res: Response, next: NextF
         await profile.save();
         await onRequestOTPByEmail(otp, profile.email,res);
 
-        // let message = {
-        //     from : 'seyeadam1@gmail.com',
-        //     to: profile.email,
-        //     subject: 'OTP Envoyé !!!',
-        //     html:`<b>Bonjour</b>, votre code OTP est ${otp}`
-       
-        //  };
-        //  transporter.sendMail(message).then((info)=>{
-        //     return res.status(201).json({
-        //         msg:'Email sent',
-        //         info: info.messageId,
-        //         preview: nodemailer.getTestMessageUrl(info)
-        //     })
-        //  }).catch((err)=>{
-        //     return res.status(500).json({msg:err});
-        //  })
+    
     }
    
 
