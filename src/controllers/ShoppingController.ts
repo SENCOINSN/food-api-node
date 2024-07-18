@@ -6,9 +6,9 @@ import {
 
 import {
   FoodDoc,
+  Offer,
   Vendor,
 } from '../models';
-import { Offer } from '../models/Offer';
 
 export const GetFoodAvailability = async (req: Request, res: Response, next: NextFunction) => {
 
