@@ -17,6 +17,7 @@ import {
   Customer,
   DeliveryUser,
   Food,
+  Offer,
   Order,
   Transaction,
   Vendor,
@@ -294,7 +295,6 @@ export const GetOrderById = async (req: Request, res: Response, next: NextFuncti
     
     
     if(orderId){
-
  
         const order = await Customer.findById(orderId).populate("items.food");
         
@@ -535,6 +535,64 @@ export const DeleteCart = async (req: Request, res: Response, next: NextFunction
     return res.status(400).json({message: 'cart is Already Empty!'})
 
 }
+
+
+export const CreatePayment = async (req: Request, res: Response, next: NextFunction) => {
+
+    const customer = await GetUserAuthenticated(req);
+
+    const { amount, paymentMode, offerId} = req.body;
+
+    let payableAmount = Number(amount);
+
+    if(offerId){
+
+        const appliedOffer = await Offer.findById(offerId);
+
+        if(appliedOffer.isActive){
+            payableAmount = (payableAmount - appliedOffer.offerAmount);
+        }
+    }
+    // perform payment gateway charge api
+
+    // create record on transaction
+    const transaction = await Transaction.create({
+        customer: customer._id,
+        vendorId: '',
+        orderId: '',
+        orderValue: payableAmount,
+        offerUsed: offerId || 'NA',
+        status: 'OPEN',
+        paymentMode: paymentMode,
+        paymentResponse: 'Payment is cash on Delivery'
+    })
+
+
+    //return transaction
+    return res.status(200).json(transaction);
+
+}
+
+export const VerifyOffer = async (req: Request, res: Response, next: NextFunction) => {
+
+    const offerId = req.params.id;
+    const customer = await GetUserAuthenticated(req);
+    
+    if(customer){
+
+        const appliedOffer = await Offer.findById(offerId);
+        
+        if(appliedOffer){
+            if(appliedOffer.isActive){
+                return res.status(200).json({ message: 'Offer is Valid', offer: appliedOffer});
+            }
+        }
+
+    }
+
+    return res.status(400).json({ msg: 'Offer is Not Valid'});
+}
+
 
 
 

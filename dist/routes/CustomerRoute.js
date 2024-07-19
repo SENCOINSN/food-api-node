@@ -28,9 +28,9 @@ router.post('/cart', CustomerController_1.AddToCart);
 router.get('/cart', CustomerController_1.GetCart);
 router.delete('/cart', CustomerController_1.DeleteCart);
 //Apply Offers
-// router.get('/offer/verify/:id', VerifyOffer);
+router.get('/offer/verify/:id', CustomerController_1.VerifyOffer);
 //Payment
-// router.post('/create-payment', CreatePayment);
+router.post('/create-payment', CustomerController_1.CreatePayment);
 //Order
 router.post('/create-order', CustomerController_1.CreateOrder);
 router.get('/orders', CustomerController_1.GetOrders);

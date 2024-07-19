@@ -39,17 +39,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+var cors_1 = __importDefault(require("cors"));
 var express_1 = __importDefault(require("express"));
 var path_1 = __importDefault(require("path"));
 var routes_1 = require("../routes");
 var ShoppingRoute_1 = require("../routes/ShoppingRoute");
-//import { CustomerRoute } from '../routes/CustomerRoute';
 exports.default = (function (app) { return __awaiter(void 0, void 0, void 0, function () {
     var imagePath;
     return __generator(this, function (_a) {
         app.use(express_1.default.json());
         app.use(express_1.default.urlencoded({ extended: true }));
         app.use(express_1.default.json());
+        app.use((0, cors_1.default)());
         imagePath = path_1.default.join(__dirname, './images');
         app.use('/images', express_1.default.static(imagePath));
         app.use('/admin', routes_1.AdminRoute);

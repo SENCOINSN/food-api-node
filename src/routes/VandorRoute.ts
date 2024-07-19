@@ -1,10 +1,13 @@
 import express from 'express';
 import multer from 'multer';
 
+import { GetOrders } from '../controllers';
 import {
   AddFood,
   GetFoods,
+  GetOrderDetails,
   GetVendorProfile,
+  ProcessOrder,
   UpdateVendorCoverImage,
   UpdateVendorProfile,
   UpdateVendorService,
@@ -36,5 +39,9 @@ const images = multer({ storage: imageStorage}).array('images', 10);
 
  router.post('/food',images,AddFood)
  router.get('/food',GetFoods)
+
+ router.get('/orders', GetOrders);
+router.put('/order/:id/process', ProcessOrder);
+router.get('/order/:id', GetOrderDetails)
 
 export { router as VandorRoute };

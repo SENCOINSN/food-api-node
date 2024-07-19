@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FindCustomer = exports.DeleteCart = exports.GetCart = exports.AddToCart = exports.CreateOrder = exports.GetOrderById = exports.GetOrders = exports.EditCustomerProfile = exports.GetCustomerProfile = exports.RequestOTPByEmail = exports.RequestOtp = exports.CustomerVerify = exports.CustomerLogin = exports.CustomerSignUp = void 0;
+exports.FindCustomer = exports.VerifyOffer = exports.CreatePayment = exports.DeleteCart = exports.GetCart = exports.AddToCart = exports.CreateOrder = exports.GetOrderById = exports.GetOrders = exports.EditCustomerProfile = exports.GetCustomerProfile = exports.RequestOTPByEmail = exports.RequestOtp = exports.CustomerVerify = exports.CustomerLogin = exports.CustomerSignUp = void 0;
 var class_transformer_1 = require("class-transformer");
 var class_validator_1 = require("class-validator");
 var Customer_dto_1 = require("../dto/Customer.dto");
@@ -550,6 +550,67 @@ var DeleteCart = function (req, res, next) { return __awaiter(void 0, void 0, vo
     });
 }); };
 exports.DeleteCart = DeleteCart;
+var CreatePayment = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer, _a, amount, paymentMode, offerId, payableAmount, appliedOffer, transaction;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, (0, utility_1.GetUserAuthenticated)(req)];
+            case 1:
+                customer = _b.sent();
+                _a = req.body, amount = _a.amount, paymentMode = _a.paymentMode, offerId = _a.offerId;
+                payableAmount = Number(amount);
+                if (!offerId) return [3 /*break*/, 3];
+                return [4 /*yield*/, models_1.Offer.findById(offerId)];
+            case 2:
+                appliedOffer = _b.sent();
+                if (appliedOffer.isActive) {
+                    payableAmount = (payableAmount - appliedOffer.offerAmount);
+                }
+                _b.label = 3;
+            case 3: return [4 /*yield*/, models_1.Transaction.create({
+                    customer: customer._id,
+                    vendorId: '',
+                    orderId: '',
+                    orderValue: payableAmount,
+                    offerUsed: offerId || 'NA',
+                    status: 'OPEN',
+                    paymentMode: paymentMode,
+                    paymentResponse: 'Payment is cash on Delivery'
+                })
+                //return transaction
+            ];
+            case 4:
+                transaction = _b.sent();
+                //return transaction
+                return [2 /*return*/, res.status(200).json(transaction)];
+        }
+    });
+}); };
+exports.CreatePayment = CreatePayment;
+var VerifyOffer = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var offerId, customer, appliedOffer;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                offerId = req.params.id;
+                return [4 /*yield*/, (0, utility_1.GetUserAuthenticated)(req)];
+            case 1:
+                customer = _a.sent();
+                if (!customer) return [3 /*break*/, 3];
+                return [4 /*yield*/, models_1.Offer.findById(offerId)];
+            case 2:
+                appliedOffer = _a.sent();
+                if (appliedOffer) {
+                    if (appliedOffer.isActive) {
+                        return [2 /*return*/, res.status(200).json({ message: 'Offer is Valid', offer: appliedOffer })];
+                    }
+                }
+                _a.label = 3;
+            case 3: return [2 /*return*/, res.status(400).json({ msg: 'Offer is Not Valid' })];
+        }
+    });
+}); };
+exports.VerifyOffer = VerifyOffer;
 var FindCustomer = function (id, email) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {

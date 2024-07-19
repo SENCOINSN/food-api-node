@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VandorRoute = void 0;
 var express_1 = __importDefault(require("express"));
 var multer_1 = __importDefault(require("multer"));
+var controllers_1 = require("../controllers");
 var VendorController_1 = require("../controllers/VendorController");
 var middlewares_1 = require("../middlewares");
 var router = express_1.default.Router();
@@ -27,4 +28,7 @@ router.patch('/service', VendorController_1.UpdateVendorService);
 router.patch('/coverimage', images, VendorController_1.UpdateVendorCoverImage);
 router.post('/food', images, VendorController_1.AddFood);
 router.get('/food', VendorController_1.GetFoods);
+router.get('/orders', controllers_1.GetOrders);
+router.put('/order/:id/process', VendorController_1.ProcessOrder);
+router.get('/order/:id', VendorController_1.GetOrderDetails);
 //# sourceMappingURL=VandorRoute.js.map
