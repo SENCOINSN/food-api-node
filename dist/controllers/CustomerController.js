@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FindCustomer = exports.EditCustomerProfile = exports.GetCustomerProfile = exports.RequestOTPByEmail = exports.RequestOtp = exports.CustomerVerify = exports.CustomerLogin = exports.CustomerSignUp = void 0;
+exports.FindCustomer = exports.DeleteCart = exports.GetCart = exports.AddToCart = exports.CreateOrder = exports.GetOrderById = exports.GetOrders = exports.EditCustomerProfile = exports.GetCustomerProfile = exports.RequestOTPByEmail = exports.RequestOtp = exports.CustomerVerify = exports.CustomerLogin = exports.CustomerSignUp = void 0;
 var class_transformer_1 = require("class-transformer");
 var class_validator_1 = require("class-validator");
 var Customer_dto_1 = require("../dto/Customer.dto");
@@ -296,6 +296,260 @@ var EditCustomerProfile = function (req, res, next) { return __awaiter(void 0, v
     });
 }); };
 exports.EditCustomerProfile = EditCustomerProfile;
+var GetOrders = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer, profile;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, (0, utility_1.GetUserAuthenticated)(req)];
+            case 1:
+                customer = _a.sent();
+                if (!customer) return [3 /*break*/, 3];
+                return [4 /*yield*/, models_1.Customer.findById(customer._id).populate("orders")];
+            case 2:
+                profile = _a.sent();
+                if (profile) {
+                    return [2 /*return*/, res.status(200).json(profile.orders)];
+                }
+                _a.label = 3;
+            case 3: return [2 /*return*/, res.status(400).json({ msg: 'Orders not found' })];
+        }
+    });
+}); };
+exports.GetOrders = GetOrders;
+var GetOrderById = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var orderId, order;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                orderId = req.params.id;
+                if (!orderId) return [3 /*break*/, 2];
+                return [4 /*yield*/, models_1.Customer.findById(orderId).populate("items.food")];
+            case 1:
+                order = _a.sent();
+                if (order) {
+                    return [2 /*return*/, res.status(200).json(order)];
+                }
+                _a.label = 2;
+            case 2: return [2 /*return*/, res.status(400).json({ msg: 'Order not found' })];
+        }
+    });
+}); };
+exports.GetOrderById = GetOrderById;
+var assignOrderForDelivery = function (orderId, vendorId) { return __awaiter(void 0, void 0, void 0, function () {
+    var vendor, areaCode, vendorLat, vendorLng, deliveryPerson, currentOrder;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, models_1.Vendor.findById(vendorId)];
+            case 1:
+                vendor = _a.sent();
+                if (!vendor) return [3 /*break*/, 6];
+                areaCode = vendor.pincode;
+                vendorLat = vendor.lat;
+                vendorLng = vendor.lng;
+                return [4 /*yield*/, models_1.DeliveryUser.find({ pincode: areaCode, verified: true, isAvailable: true })];
+            case 2:
+                deliveryPerson = _a.sent();
+                if (!deliveryPerson) return [3 /*break*/, 6];
+                return [4 /*yield*/, models_1.Order.findById(orderId)];
+            case 3:
+                currentOrder = _a.sent();
+                if (!currentOrder) return [3 /*break*/, 6];
+                //update Delivery ID
+                currentOrder.deliveryId = deliveryPerson[0]._id;
+                return [4 /*yield*/, currentOrder.save()];
+            case 4:
+                _a.sent();
+                //Notify to vendor for received new order firebase push notification
+                //email
+                return [4 /*yield*/, (0, NotificationUtility_1.notifyVendorByEmail)(currentOrder, vendor.email)];
+            case 5:
+                //Notify to vendor for received new order firebase push notification
+                //email
+                _a.sent();
+                _a.label = 6;
+            case 6: return [2 /*return*/];
+        }
+    });
+}); };
+/* ------------------- Order Section --------------------- */
+var validateTransaction = function (txnId) { return __awaiter(void 0, void 0, void 0, function () {
+    var currentTransaction;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, models_1.Transaction.findById(txnId)];
+            case 1:
+                currentTransaction = _a.sent();
+                if (currentTransaction) {
+                    if (currentTransaction.status.toLowerCase() !== 'failed') {
+                        return [2 /*return*/, { status: true, currentTransaction: currentTransaction }];
+                    }
+                }
+                return [2 /*return*/, { status: false, currentTransaction: currentTransaction }];
+        }
+    });
+}); };
+var CreateOrder = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer, _a, txnId, amount, items, _b, status_1, currentTransaction, profile, orderId, cart_1, cartItems_1, netAmount_1, vendorId_1, foods, currentOrder, profileResponse;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0: return [4 /*yield*/, (0, utility_1.GetUserAuthenticated)(req)];
+            case 1:
+                customer = _c.sent();
+                _a = req.body, txnId = _a.txnId, amount = _a.amount, items = _a.items;
+                if (!customer) return [3 /*break*/, 9];
+                return [4 /*yield*/, validateTransaction(txnId)];
+            case 2:
+                _b = _c.sent(), status_1 = _b.status, currentTransaction = _b.currentTransaction;
+                if (!status_1) {
+                    return [2 /*return*/, res.status(404).json({ message: 'Error while Creating Order!' })];
+                }
+                return [4 /*yield*/, (0, exports.FindCustomer)('', customer.email)];
+            case 3:
+                profile = _c.sent();
+                orderId = "".concat(Math.floor(Math.random() * 89999) + 1000);
+                cart_1 = req.body;
+                cartItems_1 = Array();
+                netAmount_1 = 0.0;
+                return [4 /*yield*/, models_1.Food.find().where('_id').in(cart_1.map(function (item) { return item._id; })).exec()];
+            case 4:
+                foods = _c.sent();
+                foods.map(function (food) {
+                    cart_1.map(function (_a) {
+                        var _id = _a._id, unit = _a.unit;
+                        if (food._id == _id) {
+                            vendorId_1 = food.vendorId;
+                            netAmount_1 += (food.price * unit);
+                            cartItems_1.push({ _id: _id, unit: unit });
+                        }
+                    });
+                });
+                if (!cartItems_1) return [3 /*break*/, 9];
+                return [4 /*yield*/, models_1.Order.create({
+                        orderId: orderId,
+                        vendorId: vendorId_1,
+                        items: cartItems_1,
+                        totalAmount: netAmount_1,
+                        paidAmount: amount,
+                        orderDate: new Date(),
+                        orderStatus: 'Waiting',
+                        remarks: '',
+                        deliveryId: '',
+                        readyTime: 45
+                    })];
+            case 5:
+                currentOrder = _c.sent();
+                profile.cart = [];
+                profile.orders.push(currentOrder);
+                currentTransaction.vendorId = vendorId_1;
+                currentTransaction.orderId = orderId;
+                currentTransaction.status = 'CONFIRMED';
+                return [4 /*yield*/, currentTransaction.save()];
+            case 6:
+                _c.sent();
+                return [4 /*yield*/, assignOrderForDelivery(currentOrder._id, vendorId_1)];
+            case 7:
+                _c.sent();
+                return [4 /*yield*/, profile.save()];
+            case 8:
+                profileResponse = _c.sent();
+                return [2 /*return*/, res.status(200).json(profileResponse)];
+            case 9: return [2 /*return*/, res.status(400).json({ msg: 'Error while Creating Order' })];
+        }
+    });
+}); };
+exports.CreateOrder = CreateOrder;
+/* ------------------- Cart Section --------------------- */
+var AddToCart = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer, profile, cartItems, _a, _id_1, unit, food, existFoodItems, index, cartResult;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0: return [4 /*yield*/, (0, utility_1.GetUserAuthenticated)(req)];
+            case 1:
+                customer = _b.sent();
+                if (!customer) return [3 /*break*/, 5];
+                return [4 /*yield*/, (0, exports.FindCustomer)('', customer.email)];
+            case 2:
+                profile = _b.sent();
+                cartItems = Array();
+                _a = req.body, _id_1 = _a._id, unit = _a.unit;
+                return [4 /*yield*/, models_1.Food.findById(_id_1)];
+            case 3:
+                food = _b.sent();
+                if (!food) return [3 /*break*/, 5];
+                if (!(profile != null)) return [3 /*break*/, 5];
+                cartItems = profile.cart;
+                if (cartItems.length > 0) {
+                    existFoodItems = cartItems.filter(function (item) { return item.food._id.toString() === _id_1; });
+                    if (existFoodItems.length > 0) {
+                        index = cartItems.indexOf(existFoodItems[0]);
+                        if (unit > 0) {
+                            cartItems[index] = { food: food, unit: unit };
+                        }
+                        else {
+                            cartItems.splice(index, 1);
+                        }
+                    }
+                    else {
+                        cartItems.push({ food: food, unit: unit });
+                    }
+                }
+                else {
+                    // add new Item
+                    cartItems.push({ food: food, unit: unit });
+                }
+                if (!cartItems) return [3 /*break*/, 5];
+                profile.cart = cartItems;
+                return [4 /*yield*/, profile.save()];
+            case 4:
+                cartResult = _b.sent();
+                return [2 /*return*/, res.status(200).json(cartResult.cart)];
+            case 5: return [2 /*return*/, res.status(404).json({ msg: 'Unable to add to cart!' })];
+        }
+    });
+}); };
+exports.AddToCart = AddToCart;
+var GetCart = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer, profile;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, (0, utility_1.GetUserAuthenticated)(req)];
+            case 1:
+                customer = _a.sent();
+                if (!customer) return [3 /*break*/, 3];
+                return [4 /*yield*/, (0, exports.FindCustomer)('', customer.email)];
+            case 2:
+                profile = _a.sent();
+                if (profile) {
+                    return [2 /*return*/, res.status(200).json(profile.cart)];
+                }
+                _a.label = 3;
+            case 3: return [2 /*return*/, res.status(400).json({ message: 'Cart is Empty!' })];
+        }
+    });
+}); };
+exports.GetCart = GetCart;
+var DeleteCart = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var customer, profile, cartResult;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, (0, utility_1.GetUserAuthenticated)(req)];
+            case 1:
+                customer = _a.sent();
+                if (!customer) return [3 /*break*/, 4];
+                return [4 /*yield*/, models_1.Customer.findOne({ email: customer.email }).populate('cart.food').exec()];
+            case 2:
+                profile = _a.sent();
+                if (!(profile != null)) return [3 /*break*/, 4];
+                profile.cart = [];
+                return [4 /*yield*/, profile.save()];
+            case 3:
+                cartResult = _a.sent();
+                return [2 /*return*/, res.status(200).json(cartResult)];
+            case 4: return [2 /*return*/, res.status(400).json({ message: 'cart is Already Empty!' })];
+        }
+    });
+}); };
+exports.DeleteCart = DeleteCart;
 var FindCustomer = function (id, email) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {

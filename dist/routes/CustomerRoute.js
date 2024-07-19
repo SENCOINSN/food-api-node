@@ -23,4 +23,16 @@ router.get('/opt-email', CustomerController_1.RequestOTPByEmail);
 /* ------------------- Profile --------------------- */
 router.get('/profile', CustomerController_1.GetCustomerProfile);
 router.patch('/profile', CustomerController_1.EditCustomerProfile);
+//Cart
+router.post('/cart', CustomerController_1.AddToCart);
+router.get('/cart', CustomerController_1.GetCart);
+router.delete('/cart', CustomerController_1.DeleteCart);
+//Apply Offers
+// router.get('/offer/verify/:id', VerifyOffer);
+//Payment
+// router.post('/create-payment', CreatePayment);
+//Order
+router.post('/create-order', CustomerController_1.CreateOrder);
+router.get('/orders', CustomerController_1.GetOrders);
+router.get('/order/:id', CustomerController_1.GetOrderById);
 //# sourceMappingURL=CustomerRoute.js.map

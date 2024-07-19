@@ -7,11 +7,20 @@ import {
 } from 'express';
 
 import {
+  CartItem,
   CreateCustomerInput,
   EditCustomerProfileInput,
+  OrderInputs,
   UserLoginInput,
 } from '../dto/Customer.dto';
-import { Customer } from '../models';
+import {
+  Customer,
+  DeliveryUser,
+  Food,
+  Order,
+  Transaction,
+  Vendor,
+} from '../models';
 import {
   GeneratePassword,
   GenerateSalt,
@@ -21,6 +30,7 @@ import {
 } from '../utility';
 import {
   GenerateOtp,
+  notifyVendorByEmail,
   onRequestOTP,
   onRequestOTPByEmail,
 } from '../utility/NotificationUtility';
@@ -261,6 +271,272 @@ export const EditCustomerProfile = async (req: Request, res: Response, next: Nex
     return res.status(400).json({ msg: 'Error while Updating Profile'});
 
 }
+
+export const GetOrders = async (req: Request, res: Response, next: NextFunction) => {
+
+    const customer = await GetUserAuthenticated(req);
+    
+    if(customer){
+
+        const profile = await Customer.findById(customer._id).populate("orders");
+        if(profile){
+            return res.status(200).json(profile.orders);
+        }
+
+    }
+
+    return res.status(400).json({ msg: 'Orders not found'});
+}
+
+export const GetOrderById = async (req: Request, res: Response, next: NextFunction) => {
+
+    const orderId = req.params.id;
+    
+    
+    if(orderId){
+
+ 
+        const order = await Customer.findById(orderId).populate("items.food");
+        
+        if(order){
+            return res.status(200).json(order);
+        }
+
+    }
+
+    return res.status(400).json({ msg: 'Order not found'});
+}
+
+const assignOrderForDelivery = async(orderId: string, vendorId: string) => {
+
+    // find the vendor
+    const vendor = await Vendor.findById(vendorId);
+    if(vendor){
+        const areaCode = vendor.pincode;
+        const vendorLat = vendor.lat;
+        const vendorLng = vendor.lng;
+
+        //find the available Delivery person
+        const deliveryPerson = await DeliveryUser.find({ pincode: areaCode, verified: true, isAvailable: true});
+        if(deliveryPerson){
+            // Check the nearest delivery person and assign the order
+
+            const currentOrder = await Order.findById(orderId);
+            if(currentOrder){
+                //update Delivery ID
+                currentOrder.deliveryId = deliveryPerson[0]._id as string;
+                await currentOrder.save();
+
+                //Notify to vendor for received new order firebase push notification
+                //email
+                await notifyVendorByEmail(currentOrder,vendor.email)
+            }
+
+        }
+
+
+    }
+
+
+
+
+    // Update Delivery ID
+
+}
+
+
+/* ------------------- Order Section --------------------- */
+
+const validateTransaction = async(txnId: string) => {
+    
+    const currentTransaction = await Transaction.findById(txnId);
+
+    if(currentTransaction){
+        if(currentTransaction.status.toLowerCase() !== 'failed'){
+            return {status: true, currentTransaction};
+        }
+    }
+    return {status: false, currentTransaction};
+}
+
+
+export const CreateOrder = async (req: Request, res: Response, next: NextFunction) => {
+
+
+    const customer = await GetUserAuthenticated(req);
+
+     const { txnId, amount, items } = <OrderInputs>req.body;
+
+    
+    if(customer){
+
+        const { status, currentTransaction } =  await validateTransaction(txnId);
+
+        if(!status){
+            return res.status(404).json({ message: 'Error while Creating Order!'})
+        }
+
+        const profile = await  FindCustomer('',customer.email); //Customer.findById(customer._id);
+
+
+        const orderId = `${Math.floor(Math.random() * 89999)+ 1000}`;
+
+        const cart = <[CartItem]>req.body;
+
+        let cartItems = Array();
+
+        let netAmount = 0.0;
+
+        let vendorId;
+
+        const foods = await Food.find().where('_id').in(cart.map(item => item._id)).exec();
+
+        foods.map(food => {
+            cart.map(({ _id, unit}) => {
+                if(food._id == _id){
+                    vendorId = food.vendorId;
+                    netAmount += (food.price * unit);
+                    cartItems.push({_id,unit})
+                }
+            })
+        })
+
+        if(cartItems){
+
+            const currentOrder = await Order.create({
+                orderId: orderId,
+                vendorId: vendorId,
+                items: cartItems,
+                totalAmount: netAmount,
+                paidAmount: amount,
+                orderDate: new Date(),
+                orderStatus: 'Waiting',
+                remarks: '',
+                deliveryId: '',
+                readyTime: 45
+            })
+
+            profile.cart = [] as any;
+            profile.orders.push(currentOrder);
+ 
+
+            currentTransaction.vendorId = vendorId;
+            currentTransaction.orderId = orderId;
+            currentTransaction.status = 'CONFIRMED'
+            
+            await currentTransaction.save();
+
+            await assignOrderForDelivery(currentOrder._id, vendorId);
+
+            const profileResponse =  await profile.save();
+
+            return res.status(200).json(profileResponse);
+
+        }
+
+    }
+
+    return res.status(400).json({ msg: 'Error while Creating Order'});
+}
+
+
+/* ------------------- Cart Section --------------------- */
+export const AddToCart = async (req: Request, res: Response, next: NextFunction) => {
+
+    const customer = await GetUserAuthenticated(req);
+    
+    if(customer){
+
+        const profile = await FindCustomer('',customer.email)
+        let cartItems = Array();
+
+        const { _id, unit } = <CartItem>req.body;
+
+        const food = await Food.findById(_id);
+
+        if(food){
+
+            if(profile != null){
+                cartItems = profile.cart;
+
+                if(cartItems.length > 0){
+                    // check and update
+                    let existFoodItems = cartItems.filter((item) => item.food._id.toString() === _id);
+                    if(existFoodItems.length > 0){
+                        
+                        const index = cartItems.indexOf(existFoodItems[0]);
+                        
+                        if(unit > 0){
+                            cartItems[index] = { food, unit };
+                        }else{
+                            cartItems.splice(index, 1);
+                        }
+
+                    }else{
+                        cartItems.push({ food, unit})
+                    }
+
+                }else{
+                    // add new Item
+                    cartItems.push({ food, unit });
+                }
+
+                if(cartItems){
+                    profile.cart = cartItems as any;
+                    const cartResult = await profile.save();
+                    return res.status(200).json(cartResult.cart);
+                }
+
+            }
+        }
+
+    }
+
+    return res.status(404).json({ msg: 'Unable to add to cart!'});
+}
+
+export const GetCart = async (req: Request, res: Response, next: NextFunction) => {
+
+      
+    const customer = await GetUserAuthenticated(req);
+    
+    if(customer){
+        const profile = await FindCustomer('',customer.email)
+
+        if(profile){
+            return res.status(200).json(profile.cart);
+        }
+    
+    }
+
+    return res.status(400).json({message: 'Cart is Empty!'})
+
+}
+
+
+export const DeleteCart = async (req: Request, res: Response, next: NextFunction) => {
+
+   
+    const customer = await GetUserAuthenticated(req);
+
+    if(customer){
+
+        const profile = await Customer.findOne({email:customer.email}).populate('cart.food').exec();
+
+        if(profile != null){
+            profile.cart = [] as any;
+            const cartResult = await profile.save();
+
+            return res.status(200).json(cartResult);
+        }
+
+    }
+
+    return res.status(400).json({message: 'cart is Already Empty!'})
+
+}
+
+
 
 export const FindCustomer = async (id: String | undefined, email?: string) => {
 

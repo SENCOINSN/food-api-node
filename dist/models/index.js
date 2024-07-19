@@ -19,4 +19,6 @@ __exportStar(require("./Food"), exports);
 __exportStar(require("./Offer"), exports);
 __exportStar(require("./Customer"), exports);
 __exportStar(require("./Order"), exports);
+__exportStar(require("./Transaction"), exports);
+__exportStar(require("./DeliveryUser"), exports);
 //# sourceMappingURL=index.js.map

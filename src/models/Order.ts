@@ -4,7 +4,7 @@ import mongoose, {
 } from 'mongoose';
 
 export interface OrderDoc extends Document {
-
+    _id: string;
     orderId: string;
     vendorId: string;
     items: [any];

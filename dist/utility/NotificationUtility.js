@@ -39,7 +39,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onRequestOTPByEmail = exports.onRequestOTP = exports.GenerateOtp = void 0;
+exports.notifyVendorByEmail = exports.onRequestOTPByEmail = exports.onRequestOTP = exports.GenerateOtp = void 0;
 var nodemailer_1 = __importDefault(require("nodemailer"));
 var config_1 = require("../config");
 var GenerateOtp = function () {
@@ -108,4 +108,38 @@ var onRequestOTPByEmail = function (otp, email, res) { return __awaiter(void 0, 
     });
 }); };
 exports.onRequestOTPByEmail = onRequestOTPByEmail;
+var notifyVendorByEmail = function (currentOrder, email) { return __awaiter(void 0, void 0, void 0, function () {
+    var config, transporter, message;
+    return __generator(this, function (_a) {
+        console.log("user email sended " + config_1.USER_EMAIL);
+        console.log('email ' + email);
+        console.log("current order " + currentOrder);
+        config = {
+            service: 'gmail',
+            auth: {
+                user: config_1.USER_EMAIL,
+                pass: config_1.PASSWORD_EMAIL
+            }
+        };
+        transporter = nodemailer_1.default.createTransport(config);
+        message = {
+            from: 'seyeadam1@gmail.com',
+            to: email,
+            subject: 'OTP Envoyé !!!',
+            html: "<b>Bonjour</b>, une nouvelle commande envoy\u00E9e: ".concat(currentOrder.orderDate, ", identifiant : ").concat(currentOrder.orderId, " <br>\n               delivery ID ").concat(currentOrder.deliveryId, " les commandes : ").concat(currentOrder.items, "\n            ")
+        };
+        transporter.sendMail(message).then(function (info) {
+            // return res.status(201).json({
+            //     msg:'Email sent',
+            //     info: info.messageId,
+            //     preview: nodemailer.getTestMessageUrl(info)
+            // })
+            console.log("Email send succesfully!!");
+        }).catch(function (err) {
+            console.log(err);
+        });
+        return [2 /*return*/];
+    });
+}); };
+exports.notifyVendorByEmail = notifyVendorByEmail;
 //# sourceMappingURL=NotificationUtility.js.map
