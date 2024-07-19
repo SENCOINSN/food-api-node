@@ -9,9 +9,6 @@ import {
 } from '../routes';
 import { ShoppingRoute } from '../routes/ShoppingRoute';
 
-//import { CustomerRoute } from '../routes/CustomerRoute';
-
-
 export default async(app: Application) => {
 
     app.use(express.json());
